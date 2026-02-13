@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
     try {
         const { password } = await req.json();
-        const expected = process.env.AUTH_PASSWORD;
+        const expected = process.env.AUTH_PASSWORD?.trim();
 
         if (!expected) {
             return NextResponse.json({ error: "Auth not configured" }, { status: 500 });
