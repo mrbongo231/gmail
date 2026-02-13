@@ -33,9 +33,9 @@ export async function POST(req: NextRequest) {
         }
 
         // Validate environment variables
-        const clientId = process.env.GOOGLE_CLIENT_ID;
-        const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-        const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+        const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+        const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+        const refreshToken = process.env.GOOGLE_REFRESH_TOKEN?.trim();
 
         if (!clientId || !clientSecret || !refreshToken) {
             return NextResponse.json(

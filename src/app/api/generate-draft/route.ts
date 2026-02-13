@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
     try {
-        const apiKey = process.env.XAI_API_KEY;
+        const apiKey = process.env.XAI_API_KEY?.trim();
         if (!apiKey) {
             return NextResponse.json(
                 { error: "xAI API key is not configured." },
