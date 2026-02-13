@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
 
         const client = new OpenAI({
             apiKey,
-            baseURL: "https://api.x.ai/v1",
+            baseURL: "https://api.groq.com/openai/v1",
         });
         const body = await req.json();
         const { recipient, topic } = body;
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
         }
 
         const completion = await client.chat.completions.create({
-            model: "grok-3-mini-fast",
+            model: "llama-3.3-70b-versatile",
             temperature: 0.7,
             messages: [
                 {
