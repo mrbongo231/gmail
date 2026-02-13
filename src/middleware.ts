@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const AUTH_PASSWORD = process.env.AUTH_PASSWORD || "";
-
 export function middleware(req: NextRequest) {
-    // If no password configured, allow everything (local dev)
+    const AUTH_PASSWORD = process.env.AUTH_PASSWORD;
+
+    // No password set — allow access (local dev)
     if (!AUTH_PASSWORD) {
         return NextResponse.next();
     }
@@ -18,34 +18,18 @@ export function middleware(req: NextRequest) {
 
     // Check for valid auth cookie
     const authCookie = req.cookies.get("luminary_auth")?.value;
-    if (authCookie === "authenticated") {
+    if (authCookie === AUTH_PASSWORD) {
         return NextResponse.next();
-    }
-
-    // Handle login form POST
-    if (req.method === "POST" && req.nextUrl.pathname === "/") {
-        return NextResponse.next();
-    }
-
-    // Check password in query param
-    const password = req.nextUrl.searchParams.get("p");
-    if (password && password === AUTH_PASSWORD) {
-        const url = req.nextUrl.clone();
-        url.searchParams.delete("p");
-        url.pathname = "/";
-        const response = NextResponse.redirect(url);
-        response.cookies.set("luminary_auth", "authenticated", {
-            httpOnly: true,
-            secure: true,
-            sameSite: "lax",
-            maxAge: 60 * 60 * 24 * 30,
-            path: "/",
-        });
-        return response;
     }
 
     // Return login page
-    const html = `<!DOCTYPE html>
+    return new NextResponse(LOGIN_HTML, {
+        status: 401,
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
+}
+
+const LOGIN_HTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -57,10 +41,12 @@ body{min-height:100vh;display:flex;align-items:center;justify-content:center;bac
 .c{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:40px;width:100%;max-width:380px;text-align:center;backdrop-filter:blur(20px)}
 h1{font-size:22px;font-weight:600;margin-bottom:8px;letter-spacing:-.02em}
 p{font-size:13px;color:#8a8a9a;margin-bottom:28px}
-input{width:100%;padding:12px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;color:#f0f0f5;font-size:14px;outline:none;margin-bottom:14px}
+input{width:100%;padding:12px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;color:#f0f0f5;font-size:14px;outline:none;margin-bottom:14px;font-family:inherit}
 input:focus{border-color:rgba(99,102,241,.5)}
-button{width:100%;padding:12px;background:linear-gradient(135deg,#6366f1,#4f46e5);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:500;cursor:pointer}
+button{width:100%;padding:12px;background:linear-gradient(135deg,#6366f1,#4f46e5);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit}
 button:hover{opacity:.9}
+button:disabled{opacity:.5;cursor:not-allowed}
+.err{color:#f87171;font-size:12px;margin-top:12px;display:none}
 </style>
 </head>
 <body>
@@ -69,24 +55,31 @@ button:hover{opacity:.9}
 <p>Enter your password to continue</p>
 <form id="f">
 <input type="password" id="pw" placeholder="Password" autofocus/>
-<button type="submit">Continue</button>
+<button type="submit" id="btn">Continue</button>
 </form>
+<div class="err" id="err"></div>
 </div>
 <script>
-document.getElementById('f').onsubmit=function(e){
-e.preventDefault();
-var pw=document.getElementById('pw').value;
-if(pw)window.location.href='/?p='+encodeURIComponent(pw);
+document.getElementById('f').onsubmit=async function(e){
+  e.preventDefault();
+  var pw=document.getElementById('pw').value;
+  if(!pw)return;
+  var btn=document.getElementById('btn');
+  var err=document.getElementById('err');
+  btn.disabled=true;
+  btn.textContent='Checking...';
+  err.style.display='none';
+  try{
+    var r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+    if(r.ok){window.location.href='/';}
+    else{var d=await r.json();err.textContent=d.error||'Wrong password';err.style.display='block';}
+  }catch(x){err.textContent='Something went wrong';err.style.display='block';}
+  btn.disabled=false;
+  btn.textContent='Continue';
 };
 </script>
 </body>
 </html>`;
-
-    return new NextResponse(html, {
-        status: 401,
-        headers: { "Content-Type": "text/html; charset=utf-8" },
-    });
-}
 
 export const config = {
     matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
